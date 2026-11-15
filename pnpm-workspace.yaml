@@ -143,3 +143,5 @@ patchedDependencies:
   minimatch@9.0.9: config/patches/minimatch@9.0.9.patch
   minimatch@10.2.5: config/patches/minimatch@10.2.5.patch
   minimatch@10.2.6: config/patches/minimatch@10.2.6.patch
+  remend@1.4.0: config/patches/remend@1.4.0.patch
+  hast-util-raw@9.1.0: config/patches/hast-util-raw@9.1.0.patch
