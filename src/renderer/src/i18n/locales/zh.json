@@ -20021,6 +20021,7 @@
           "selectionVanishedCount_other": "所选的 {{count}} 个工作区已不存在",
           "selectionWithheldCount_other": "所选的 {{count}} 个工作区被当前筛选条件隐藏，已取消选择",
           "selectAllSafetyChecked_other": "选择全部 {{count}} 个已通过安全检查的工作区",
+          "clearSelection": "清除选择",
           "lastActive": "最后活跃：{{value0}}"
         },
         "scan": {
