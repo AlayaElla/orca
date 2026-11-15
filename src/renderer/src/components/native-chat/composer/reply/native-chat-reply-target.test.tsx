@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { useRef } from 'react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useNativeChatComposerKeyDown } from '../editor/use-native-chat-composer-keydown'
 import {
   NATIVE_CHAT_REPLY_TARGETS_MAX,
   readNativeChatReplyTarget,
@@ -55,6 +56,29 @@ describe('reply targets', () => {
   })
 })
 
+const interrupt = vi.fn()
+const dismissPicker = vi.fn()
+
+function Input({ pickerOpen }: { pickerOpen: boolean }): React.JSX.Element {
+  const onKeyDown = useNativeChatComposerKeyDown({
+    autocomplete: pickerOpen ? { mode: 'mention', query: '', triggerKey: '@' } : { mode: 'none' },
+    mentionFiles: { files: [], loading: false, failed: false },
+    completeMention: () => {},
+    activeSuggestion: 0,
+    draft: '',
+    isComposing: () => false,
+    completePickerItem: () => {},
+    dispatchPickerCommand: () => {},
+    dismissPicker,
+    interrupt,
+    send: () => {},
+    setActiveSuggestion: () => {},
+    setDraft: () => {},
+    setCaret: () => {}
+  })
+  return <div contentEditable data-testid="input" onKeyDown={onKeyDown} />
+}
+
 function Chat({
   messages,
   pickerOpen = false
@@ -75,7 +99,7 @@ function Chat({
       </div>
       <div data-native-chat-composer-scope="scope">
         <NativeChatReplyStrip scopeKey="scope" agent="claude" onDone={() => {}} />
-        <div contentEditable aria-expanded={pickerOpen} data-testid="input" />
+        <Input pickerOpen={pickerOpen} />
       </div>
     </div>
   )
@@ -97,11 +121,16 @@ describe('reply strip', () => {
     const view = render(<Chat messages={['m-7']} pickerOpen />)
     expect(screen.getByRole('status').textContent).toBe('Replying to Claude')
     fireEvent.keyDown(screen.getByTestId('input'), { key: 'Escape' })
+    expect(dismissPicker).toHaveBeenCalledTimes(1)
     expect(readNativeChatReplyTarget('scope')?.id).toBe('r')
     view.rerender(<Chat messages={['m-7']} />)
     fireEvent.keyDown(screen.getByTestId('input'), { key: 'Escape' })
     expect(readNativeChatReplyTarget('scope')).toBeNull()
+    expect(interrupt).not.toHaveBeenCalled()
     expect(screen.getByRole('status').textContent).toBe('Reply cancelled')
+    // With no reply left, Esc interrupts the agent as before.
+    fireEvent.keyDown(screen.getByTestId('input'), { key: 'Escape' })
+    expect(interrupt).toHaveBeenCalledTimes(1)
   })
 
   it('outlines and focuses the original it jumps to', () => {

@@ -3,11 +3,11 @@ import { ArrowUpRight, Reply, X } from 'lucide-react'
 import { Trans } from 'react-i18next'
 import { i18n } from '@/i18n/i18n'
 import { cn } from '@/lib/class-names'
-import { useLatestHandler } from '@/lib/use-latest-handler'
 import { useTranslate } from '@/i18n/use-translate'
 import { formatAgentTypeLabel } from '../../../../../../shared/agent-status/presentation/agent-type-label'
 import {
-  clearNativeChatReplyTarget,
+  cancelNativeChatReplyTarget,
+  nativeChatReplyWasCancelled,
   useNativeChatReplyTarget,
   type NativeChatReplyTarget
 } from './native-chat-reply-target'
@@ -29,13 +29,6 @@ export function NativeChatReplyStrip({
 }): React.JSX.Element {
   const t = useTranslate()
   const target = useNativeChatReplyTarget(scopeKey)
-  // Only a user's cancel is announced; a send that uses the reply ends it silently.
-  const [cancelledId, setCancelledId] = useState<string | null>(null)
-  useEffect(() => {
-    if (target) {
-      setCancelledId(null)
-    }
-  }, [target])
   const label = !target
     ? ''
     : target.author === 'user'
@@ -45,7 +38,8 @@ export function NativeChatReplyStrip({
         : t('components.native-chat.reply.agentFallback', 'Agent')
   const announcement = target
     ? t('components.native-chat.reply.replyingToLabel', 'Replying to {{name}}', { name: label })
-    : cancelledId
+    : // Only a user's cancel is announced; a send that uses the reply ends it silently.
+      nativeChatReplyWasCancelled(scopeKey)
       ? t('components.native-chat.reply.cancelled', 'Reply cancelled')
       : ''
   return (
@@ -59,10 +53,7 @@ export function NativeChatReplyStrip({
           key={target.id}
           label={label}
           target={target}
-          onCancel={() => {
-            setCancelledId(target.id)
-            clearNativeChatReplyTarget(scopeKey, target.id)
-          }}
+          onCancel={() => cancelNativeChatReplyTarget(scopeKey)}
           onDone={onDone}
         />
       ) : null}
@@ -95,31 +86,6 @@ function ReplyStripRow({
     root?.addEventListener(NATIVE_CHAT_MESSAGES_CHANGED_EVENT, probe)
     return () => root?.removeEventListener(NATIVE_CHAT_MESSAGES_CHANGED_EVENT, probe)
   }, [target.messageId])
-  // Esc clears the reply before it can interrupt the agent; an open picker (the input then
-  // reports itself expanded) takes Esc first.
-  const cancel = useLatestHandler(onCancel)
-  useEffect(() => {
-    const composer = ref.current?.closest<HTMLElement>('[data-native-chat-composer-scope]')
-    if (!composer) {
-      return
-    }
-    const onKeyDown = (event: KeyboardEvent): void => {
-      const input = event.target instanceof Element ? event.target : null
-      if (
-        event.key !== 'Escape' ||
-        event.isComposing ||
-        !input?.closest('[contenteditable="true"], textarea') ||
-        input.closest('[aria-expanded="true"]')
-      ) {
-        return
-      }
-      event.preventDefault()
-      event.stopPropagation()
-      cancel()
-    }
-    composer.addEventListener('keydown', onKeyDown, true)
-    return () => composer.removeEventListener('keydown', onKeyDown, true)
-  }, [cancel])
   const snippet = target.excerpt.split(/\r?\n/).find((line) => line.trim()) ?? ''
   const showOriginal = t('components.native-chat.reply.showOriginal', 'Show the original message')
   const unavailable = t('components.native-chat.reply.originalUnavailable', 'Message unavailable')

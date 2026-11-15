@@ -20,6 +20,8 @@ const STORAGE_KEY = 'orca.nativeChat.replyTargets.v1'
 
 const targets = new Map<string, NativeChatReplyTarget>()
 const listeners = new Map<string, Set<() => void>>()
+/** Scopes whose last reply the user cancelled, so the strip can say so; a send clears silently. */
+const cancelled = new Set<string>()
 let loaded = false
 let sequence = 0
 
@@ -110,6 +112,7 @@ export function readNativeChatReplyTarget(scopeKey: string): NativeChatReplyTarg
 
 export function setNativeChatReplyTarget(scopeKey: string, target: NativeChatReplyTarget): void {
   load()
+  cancelled.delete(scopeKey)
   targets.delete(scopeKey)
   targets.set(scopeKey, target)
   const evicted: string[] = []
@@ -127,6 +130,31 @@ export function setNativeChatReplyTarget(scopeKey: string, target: NativeChatRep
   for (const key of evicted) {
     notify(key)
   }
+}
+
+/** The user dropped the reply (Cancel or Esc); true when there was one. */
+export function cancelNativeChatReplyTarget(scopeKey: string): boolean {
+  const current = readNativeChatReplyTarget(scopeKey)
+  if (!current) {
+    return false
+  }
+  clearNativeChatReplyTarget(scopeKey, current.id)
+  cancelled.add(scopeKey)
+  return true
+}
+
+export function nativeChatReplyWasCancelled(scopeKey: string): boolean {
+  return cancelled.has(scopeKey)
+}
+
+/** Esc in a message box: drops that box's reply, if it has one, before anything else Esc does there. */
+export function cancelNativeChatReplyFrom(target: EventTarget | null): boolean {
+  const scopeKey =
+    target instanceof Element
+      ? target.closest<HTMLElement>('[data-native-chat-composer-scope]')?.dataset
+          .nativeChatComposerScope
+      : undefined
+  return scopeKey ? cancelNativeChatReplyTarget(scopeKey) : false
 }
 
 /** Puts back a reply a refused send had taken, unless the user has picked another since. */
@@ -162,6 +190,7 @@ export function clearNativeChatReplyTarget(scopeKey: string, id?: string): void 
   if (!current || (id !== undefined && current.id !== id)) {
     return
   }
+  cancelled.delete(scopeKey)
   targets.delete(scopeKey)
   save()
   notify(scopeKey)
@@ -244,6 +273,7 @@ export function nativeChatReplyQuoteOf(
 /** Test-only: forget all targets and reload from storage on next read. */
 export function resetNativeChatReplyTargetsForTests(): void {
   targets.clear()
+  cancelled.clear()
   listeners.clear()
   loaded = false
 }
