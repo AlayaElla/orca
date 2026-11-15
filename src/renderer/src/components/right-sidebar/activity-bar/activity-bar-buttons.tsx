@@ -163,7 +163,6 @@ export function TopActivityOverflowMenu({
               </ContextMenuTrigger>
               <ActivityBarPositionMenu
                 currentPosition={activityBarPosition}
-                focusOverflowItem
                 onChangePosition={onChangeActivityBarPosition}
                 pluginKey={item.pluginKey}
                 itemId={item.id}
