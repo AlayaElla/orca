@@ -1,4 +1,5 @@
 import { QueuedMessageImageCount } from '@/components/native-chat/queue/NativeChatQueuedMessageImageCount'
+import { nativeChatReplyDisplayText } from '../composer/reply/NativeChatReplyQuoteChip'
 import type { QueuedMessageDragPresentation } from '@/components/native-chat/queue/NativeChatQueuedMessageRows'
 import { useId, useState } from 'react'
 import {
@@ -162,7 +163,10 @@ export function NativeChatQueuedMessageCard({
 }): React.JSX.Element {
   const t = useTranslate()
   const caption = queuedMessageCardCaption(card, agentName, statedFailures, t)
-  const line = queuedMessageCardLine(card, nativeChatImageLabelCopy(t))
+  const line = nativeChatReplyDisplayText(
+    queuedMessageCardLine(card, nativeChatImageLabelCopy(t)),
+    t
+  )
   const returned = card.state === 'returned'
   const attention = queuedMessageCardNeedsAttention(card)
   const sendNow = queuedMessageCardSendNow(card, agentWorking, t)

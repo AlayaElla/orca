@@ -76,9 +76,15 @@ function notify(scopeKey: string): void {
   }
 }
 
-/** The first non-empty lines up to the cap, with an ellipsis when cut. */
+/** The message's own words up to the cap: an earlier reply's quote and markdown markers are left out. */
 export function nativeChatReplyExcerpt(text: string): string {
-  const trimmed = text.trim()
+  const own = nativeChatReplyQuoteOf(text)?.rest ?? text
+  const trimmed = own
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*(```|~~~)/.test(line))
+    .map((line) => line.replace(/^\s{0,3}(#{1,6}\s+|>\s?|[-*+]\s+)/, ''))
+    .join('\n')
+    .trim()
   if (trimmed.length <= NATIVE_CHAT_REPLY_EXCERPT_MAX) {
     return trimmed
   }
@@ -106,15 +112,47 @@ export function setNativeChatReplyTarget(scopeKey: string, target: NativeChatRep
   load()
   targets.delete(scopeKey)
   targets.set(scopeKey, target)
+  const evicted: string[] = []
   while (targets.size > NATIVE_CHAT_REPLY_TARGETS_MAX) {
     const oldest = targets.keys().next().value
     if (oldest === undefined) {
       break
     }
     targets.delete(oldest)
+    evicted.push(oldest)
   }
   save()
   notify(scopeKey)
+  // A mounted strip for a dropped scope must not keep showing a reply the send can no longer read.
+  for (const key of evicted) {
+    notify(key)
+  }
+}
+
+/** Puts back a reply a refused send had taken, unless the user has picked another since. */
+export function restoreNativeChatReplyTarget(
+  scopeKey: string,
+  target: NativeChatReplyTarget
+): void {
+  if (!readNativeChatReplyTarget(scopeKey)) {
+    setNativeChatReplyTarget(scopeKey, target)
+  }
+}
+
+/** Forgets replies for drafts that are deleted, such as a closed chat or removed workspace. */
+export function clearNativeChatReplyTargetsWhere(matches: (scopeKey: string) => boolean): void {
+  load()
+  const removed = [...targets.keys()].filter(matches)
+  if (removed.length === 0) {
+    return
+  }
+  for (const key of removed) {
+    targets.delete(key)
+  }
+  save()
+  for (const key of removed) {
+    notify(key)
+  }
 }
 
 /** Clears the scope's target; with `id`, only when it is still that target, so a newer Reply survives a send. */
@@ -151,10 +189,14 @@ export function useNativeChatReplyTarget(scopeKey: string): NativeChatReplyTarge
   )
 }
 
+const AGENT_HEAD = /^> Replying to the earlier message from (.+):$/
+const OWN_HEAD = '> Replying to my earlier message:'
+
 /** The text a reply sends: a quote of the message it answers, written for the agent, then the user's words. */
 export function withNativeChatReplyContext(
   text: string,
-  target: Pick<NativeChatReplyTarget, 'author' | 'excerpt'> | null
+  target: Pick<NativeChatReplyTarget, 'author' | 'excerpt'> | null,
+  agentLabel: string
 ): string {
   if (!target) {
     return text
@@ -164,9 +206,39 @@ export function withNativeChatReplyContext(
     .map((line) => (line.trim() ? `> ${line}` : '>'))
     .join('\n')
   const head =
-    target.author === 'agent' ? '> Replying to your message:' : '> Replying to my earlier message:'
+    target.author === 'agent' ? `> Replying to the earlier message from ${agentLabel}:` : OWN_HEAD
   const body = text.trim()
   return body ? `${head}\n${quoted}\n\n${text}` : `${head}\n${quoted}`
+}
+
+/** A sent reply's quote, read back so the user's own bubble can show it compactly. */
+export function nativeChatReplyQuoteOf(
+  text: string
+): { author: 'agent' | 'user'; label: string | null; excerpt: string; rest: string } | null {
+  // Most messages are not replies; skip the split on every row render.
+  if (!text.startsWith('> Replying to ')) {
+    return null
+  }
+  const lines = text.split(/\r?\n/)
+  const agentHead = AGENT_HEAD.exec(lines[0] ?? '')
+  if (!agentHead && lines[0] !== OWN_HEAD) {
+    return null
+  }
+  let end = 1
+  while (end < lines.length && lines[end].startsWith('>')) {
+    end += 1
+  }
+  const excerpt = lines
+    .slice(1, end)
+    .map((line) => line.replace(/^>\s?/, ''))
+    .join('\n')
+    .trim()
+  return {
+    author: agentHead ? 'agent' : 'user',
+    label: agentHead?.[1] ?? null,
+    excerpt,
+    rest: lines.slice(end).join('\n').trim()
+  }
 }
 
 /** Test-only: forget all targets and reload from storage on next read. */

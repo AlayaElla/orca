@@ -20905,7 +20905,20 @@
         "many_many": "Создано {{count}} запросов на слияние"
       },
       "splitRight": "Разделить вправо",
-      "splitDown": "Разделить вниз"
+      "splitDown": "Разделить вниз",
+      "reply": {
+        "action": "Ответить",
+        "you": "Вы",
+        "showOriginal": "Показать исходное сообщение",
+        "originalUnavailable": "Сообщение недоступно",
+        "cancel": "Отменить ответ",
+        "replyingToLabel": "Ответ для {{name}}",
+        "replyingToName": "Ответ для <name>{{name}}</name>",
+        "repliedTo": "Ответ для {{name}}",
+        "repliedToYou": "Ответ на ваше сообщение",
+        "agentFallback": "Агент",
+        "cancelled": "Ответ отменён"
+      }
     },
     "tab": {
       "bar": {

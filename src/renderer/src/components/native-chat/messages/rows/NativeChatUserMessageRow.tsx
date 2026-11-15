@@ -14,6 +14,8 @@ import { NativeChatUserMessageFold } from './NativeChatUserMessageFold'
 import { NativeChatCodeBlock } from '../../markdown/code/NativeChatCodeBlock'
 import { NativeChatCopyButton } from '../actions/NativeChatCopyButton'
 import { NativeChatReplyAction } from '../actions/NativeChatReplyAction'
+import { NativeChatReplyQuoteChip } from '../../composer/reply/NativeChatReplyQuoteChip'
+import { nativeChatReplyQuoteOf } from '../../composer/reply/native-chat-reply-target'
 import { NativeChatMessageTimestamp } from './NativeChatMessageTimestamp'
 import { NativeChatAgentMessageCard } from './NativeChatAgentMessageCard'
 import { NativeChatDetailsDisclosure } from '../diagnostics/NativeChatProviderDetails'
@@ -92,6 +94,9 @@ export function NativeChatUserMessageRow({
   // Agent-authored input belongs to the turn but uses a left-aligned sender row instead of the person’s bubble.
   const from = message.from
   const sending = deliveryNotice?.sending === true
+  // The quote a reply carries is for the agent; the user sees it as one compact line.
+  const replyQuote = from ? null : nativeChatReplyQuoteOf(markdown)
+  const shownMarkdown = replyQuote?.rest ?? markdown
   return (
     <div
       ref={rowRef}
@@ -99,7 +104,11 @@ export function NativeChatUserMessageRow({
       data-native-chat-message-id={markdown ? message.id : undefined}
       data-native-chat-message-author={from ? undefined : 'user'}
       data-native-chat-rewind-item={rewind && !sending ? message.id : undefined}
-      className={cn('group relative flex flex-col gap-0.5', from ? 'items-start' : 'items-end')}
+      className={cn(
+        'group relative flex flex-col gap-0.5 rounded-sm',
+        'data-[native-chat-reply-landed]:outline-2 data-[native-chat-reply-landed]:outline-offset-4 data-[native-chat-reply-landed]:outline-ring',
+        from ? 'items-start' : 'items-end'
+      )}
     >
       {from ? (
         <NativeChatAgentMessageCard
@@ -118,15 +127,16 @@ export function NativeChatUserMessageRow({
                 runtimeContext={runtimeContext}
                 enablePreview={runtimeContext !== undefined}
               />
+              {replyQuote ? <NativeChatReplyQuoteChip quote={replyQuote} /> : null}
               <NativeChatUserMessageFold
                 messageId={message.id}
-                markdown={markdown}
+                markdown={shownMarkdown}
                 onRefolded={onRefolded}
                 // List numbers hang into the bubble's padding; clipping at the text edge cut them off.
                 className="-mx-3.5 px-3.5"
               >
                 <NativeChatTextAttachments
-                  content={markdown}
+                  content={shownMarkdown}
                   structured={structuredAttachments}
                   runtimeContext={runtimeContext}
                   renderText={(text) => (

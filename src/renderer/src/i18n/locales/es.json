@@ -20047,7 +20047,20 @@
         "many_many": "{{count}} solicitudes de extracción creadas"
       },
       "splitRight": "Dividir a la derecha",
-      "splitDown": "Dividir hacia abajo"
+      "splitDown": "Dividir hacia abajo",
+      "reply": {
+        "action": "Responder",
+        "you": "Tú",
+        "showOriginal": "Mostrar el mensaje original",
+        "originalUnavailable": "Mensaje no disponible",
+        "cancel": "Cancelar respuesta",
+        "replyingToLabel": "Respondiendo a {{name}}",
+        "replyingToName": "Respondiendo a <name>{{name}}</name>",
+        "repliedTo": "Respuesta a {{name}}",
+        "repliedToYou": "Respuesta a tu mensaje",
+        "agentFallback": "Agente",
+        "cancelled": "Respuesta cancelada"
+      }
     },
     "tab": {
       "bar": {

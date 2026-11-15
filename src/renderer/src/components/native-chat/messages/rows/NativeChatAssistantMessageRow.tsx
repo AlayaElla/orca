@@ -86,6 +86,7 @@ export function NativeChatAssistantMessageRow({
       data-native-chat-message-tone={isSystem ? 'faint' : undefined}
       className={cn(
         'group relative max-w-full select-text text-sm leading-relaxed text-chat-foreground',
+        'rounded-sm data-[native-chat-reply-landed]:outline-2 data-[native-chat-reply-landed]:outline-offset-4 data-[native-chat-reply-landed]:outline-ring',
         isSystem && 'text-xs text-chat-foreground-faint'
       )}
     >

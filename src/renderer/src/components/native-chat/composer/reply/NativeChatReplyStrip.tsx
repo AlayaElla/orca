@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowUpRight, Reply, X } from 'lucide-react'
+import { Trans } from 'react-i18next'
+import { i18n } from '@/i18n/i18n'
 import { cn } from '@/lib/class-names'
+import { useLatestHandler } from '@/lib/use-latest-handler'
 import { useTranslate } from '@/i18n/use-translate'
 import { formatAgentTypeLabel } from '../../../../../../shared/agent-status/presentation/agent-type-label'
 import {
@@ -8,7 +11,10 @@ import {
   useNativeChatReplyTarget,
   type NativeChatReplyTarget
 } from './native-chat-reply-target'
-import { requestNativeChatMessageReveal } from './native-chat-reply-context'
+import {
+  NATIVE_CHAT_MESSAGES_CHANGED_EVENT,
+  requestNativeChatMessageReveal
+} from './native-chat-reply-context'
 
 /** "Replying to …" at the top of the message box: names the message the next send answers. */
 export function NativeChatReplyStrip({
@@ -20,42 +26,78 @@ export function NativeChatReplyStrip({
   agent?: string
   /** Hands the user back to the message box after Cancel. */
   onDone: () => void
-}): React.JSX.Element | null {
+}): React.JSX.Element {
+  const t = useTranslate()
   const target = useNativeChatReplyTarget(scopeKey)
-  if (!target) {
-    return null
-  }
+  // Only a user's cancel is announced; a send that uses the reply ends it silently.
+  const [cancelledId, setCancelledId] = useState<string | null>(null)
+  useEffect(() => {
+    if (target) {
+      setCancelledId(null)
+    }
+  }, [target])
+  const label = !target
+    ? ''
+    : target.author === 'user'
+      ? t('components.native-chat.reply.you', 'You')
+      : agent
+        ? formatAgentTypeLabel(agent)
+        : t('components.native-chat.reply.agentFallback', 'Agent')
+  const announcement = target
+    ? t('components.native-chat.reply.replyingToLabel', 'Replying to {{name}}', { name: label })
+    : cancelledId
+      ? t('components.native-chat.reply.cancelled', 'Reply cancelled')
+      : ''
   return (
-    <ReplyStripRow
-      key={target.id}
-      scopeKey={scopeKey}
-      agent={agent}
-      target={target}
-      onDone={onDone}
-    />
+    <>
+      {/* Always mounted, so screen readers hear each change rather than a region appearing. */}
+      <span className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </span>
+      {target ? (
+        <ReplyStripRow
+          key={target.id}
+          label={label}
+          target={target}
+          onCancel={() => {
+            setCancelledId(target.id)
+            clearNativeChatReplyTarget(scopeKey, target.id)
+          }}
+          onDone={onDone}
+        />
+      ) : null}
+    </>
   )
 }
 
 function ReplyStripRow({
-  scopeKey,
-  agent,
+  label,
   target,
+  onCancel,
   onDone
 }: {
-  scopeKey: string
-  agent?: string
+  label: string
   target: NativeChatReplyTarget
+  onCancel: () => void
   onDone: () => void
 }): React.JSX.Element {
   const t = useTranslate()
   const ref = useRef<HTMLDivElement>(null)
   // A rewind or clear can take the message out of this chat.
   const [available, setAvailable] = useState(true)
-  // Passive, so the transcript's layout-time answer is already listening.
+  // Passive, so the transcript's layout-time answer is already listening; asked again whenever
+  // the transcript's messages change, so a removed or returning original shows correctly.
   useEffect(() => {
-    setAvailable(requestNativeChatMessageReveal(ref.current, target.messageId, true))
+    const probe = (): void =>
+      setAvailable(requestNativeChatMessageReveal(ref.current, target.messageId, true))
+    probe()
+    const root = ref.current?.closest('[data-native-chat-root]')
+    root?.addEventListener(NATIVE_CHAT_MESSAGES_CHANGED_EVENT, probe)
+    return () => root?.removeEventListener(NATIVE_CHAT_MESSAGES_CHANGED_EVENT, probe)
   }, [target.messageId])
-  // Esc clears the reply before it can interrupt the agent; an open picker takes Esc first.
+  // Esc clears the reply before it can interrupt the agent; an open picker (the input then
+  // reports itself expanded) takes Esc first.
+  const cancel = useLatestHandler(onCancel)
   useEffect(() => {
     const composer = ref.current?.closest<HTMLElement>('[data-native-chat-composer-scope]')
     if (!composer) {
@@ -67,21 +109,17 @@ function ReplyStripRow({
         event.key !== 'Escape' ||
         event.isComposing ||
         !input?.closest('[contenteditable="true"], textarea') ||
-        composer.querySelector('[role="listbox"]')
+        input.closest('[aria-expanded="true"]')
       ) {
         return
       }
       event.preventDefault()
       event.stopPropagation()
-      clearNativeChatReplyTarget(scopeKey, target.id)
+      cancel()
     }
     composer.addEventListener('keydown', onKeyDown, true)
     return () => composer.removeEventListener('keydown', onKeyDown, true)
-  }, [scopeKey, target.id])
-  const label =
-    target.author === 'agent'
-      ? formatAgentTypeLabel(agent)
-      : t('components.native-chat.reply.you', 'You')
+  }, [cancel])
   const snippet = target.excerpt.split(/\r?\n/).find((line) => line.trim()) ?? ''
   const showOriginal = t('components.native-chat.reply.showOriginal', 'Show the original message')
   const unavailable = t('components.native-chat.reply.originalUnavailable', 'Message unavailable')
@@ -96,10 +134,18 @@ function ReplyStripRow({
       className="mb-1.5 flex min-w-0 items-center gap-1.5 rounded-lg bg-muted/70 py-1 pr-1 pl-2 text-xs text-muted-foreground"
     >
       <Reply aria-hidden className="size-3.5 shrink-0" />
+      {/* One sentence, so each language orders "Replying to" and the name its own way. */}
       <span className="shrink-0">
-        {t('components.native-chat.reply.replyingTo', 'Replying to')}
+        <Trans
+          i18n={i18n}
+          defaults={t(
+            'components.native-chat.reply.replyingToName',
+            'Replying to <name>{{name}}</name>',
+            { name: label }
+          )}
+          components={{ name: <span className="font-medium text-foreground" /> }}
+        />
       </span>
-      <span className="shrink-0 font-medium text-foreground">{label}</span>
       {available ? (
         <button
           type="button"
@@ -121,8 +167,11 @@ function ReplyStripRow({
           <ArrowUpRight aria-hidden className="size-3 shrink-0 opacity-70" />
         </button>
       ) : (
-        // The cue never truncates; only the snippet after it does.
-        <span className="flex min-w-0 flex-1 items-center gap-1" title={unavailable}>
+        // The cue never truncates; only the snippet after it does, and its words stay in the title.
+        <span
+          className="flex min-w-0 flex-1 items-center gap-1"
+          title={snippet ? `${unavailable}: ${snippet}` : unavailable}
+        >
           <span className="shrink-0 italic">{unavailable}</span>
           {snippet ? <span className="min-w-0 truncate">· {snippet}</span> : null}
         </span>
@@ -132,7 +181,7 @@ function ReplyStripRow({
         aria-label={cancelLabel}
         title={cancelLabel}
         onClick={() => {
-          clearNativeChatReplyTarget(scopeKey, target.id)
+          onCancel()
           onDone()
         }}
         className="flex size-6 shrink-0 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

@@ -60,7 +60,12 @@ export function readNativeChatContextMenuTarget(
         ?.closest('[data-native-chat-rewind-item]')
         ?.getAttribute('data-native-chat-rewind-item') ?? null,
     replyTo:
-      element && messageId && messageText && (author === 'agent' || author === 'user')
+      element &&
+      messageId &&
+      messageText &&
+      (author === 'agent' || author === 'user') &&
+      // A subagent's own messages are not this chat's to reply to.
+      !element.closest('[data-native-chat-subagent-view]')
         ? { source: { messageId, author, text: messageText }, from: element }
         : null
   }

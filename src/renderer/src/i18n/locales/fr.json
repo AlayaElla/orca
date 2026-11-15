@@ -20320,7 +20320,20 @@
         "many_many": "{{count}} pull requests créées"
       },
       "splitRight": "Diviser à droite",
-      "splitDown": "Diviser vers le bas"
+      "splitDown": "Diviser vers le bas",
+      "reply": {
+        "action": "Répondre",
+        "you": "Vous",
+        "showOriginal": "Afficher le message d’origine",
+        "originalUnavailable": "Message indisponible",
+        "cancel": "Annuler la réponse",
+        "replyingToLabel": "Réponse à {{name}}",
+        "replyingToName": "Réponse à <name>{{name}}</name>",
+        "repliedTo": "Réponse à {{name}}",
+        "repliedToYou": "Réponse à votre message",
+        "agentFallback": "Agent",
+        "cancelled": "Réponse annulée"
+      }
     },
     "tab": {
       "bar": {

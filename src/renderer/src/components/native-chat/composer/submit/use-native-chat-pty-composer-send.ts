@@ -1,4 +1,5 @@
 import { readNativeChatComposerDraft } from '../../drafts/native-chat-composer-draft-store'
+import { formatAgentTypeLabel } from '../../../../../../shared/agent-status/presentation/agent-type-label'
 import { serializeNativeChatAgentReferences } from '../pickers/native-chat-agent-reference-send'
 import {
   clearNativeChatReplyTarget,
@@ -29,6 +30,7 @@ import {
 } from './native-chat-composer-target'
 import { isSlashCommandDraft } from '../../../../../../shared/native-chat/input/commands/native-chat-slash-commands'
 import type { NativeChatPickerState } from '../pickers/use-native-chat-picker-state'
+import type { NativeChatSendClassification } from '../../../../../../shared/native-chat/input/commands/native-chat-slash-commands'
 import type { NativeChatSendLifecycle } from '../../session/terminal/send/use-native-chat-send-lifecycle'
 import type { NativeChatPtySessionOptionsSurface } from '../../../../../../shared/native-chat/input/session-options/native-chat-pty-session-options'
 import type { NativeChatOptimisticSendOutcome } from '../../session/terminal/delivery/native-chat-optimistic-send-outcome'
@@ -36,6 +38,14 @@ import {
   answerNativeChatCommandInComposer,
   type NativeChatLocalCommandAnswer
 } from '../../session/options/terminal/use-native-chat-local-command-answer'
+
+/** How a terminal chat delivers a send: slash-like text alone is typed as a command; anything with images is a message. */
+export function nativeChatPtySendRoute(
+  classification: NativeChatSendClassification,
+  imageCount: number
+): 'command' | 'message' {
+  return classification !== 'chat' && imageCount === 0 ? 'command' : 'message'
+}
 
 export function useNativeChatPtyComposerSend(args: {
   agent: AgentType
@@ -92,10 +102,14 @@ export function useNativeChatPtyComposerSend(args: {
         ? resolveNativeChatPastedText(args.draftScopeKey, text)
         : serializeNativeChatAgentReferences(text, submitted.document, submitted.pastedTextFiles)
       // Quoted once into the sent text; a retry resends that text and never reads the current reply.
+      const route = nativeChatPtySendRoute(classification, imagePaths.length)
+      // Only a message carries the reply; a real command keeps it for the next message.
       const reply =
-        !retry && classification === 'chat' ? readNativeChatReplyTarget(args.draftScopeKey) : null
+        !retry && route === 'message' && classification !== 'command'
+          ? readNativeChatReplyTarget(args.draftScopeKey)
+          : null
       if (reply) {
-        text = withNativeChatReplyContext(text, reply)
+        text = withNativeChatReplyContext(text, reply, formatAgentTypeLabel(args.agent))
       }
       const { sendOptions: launchSendOptions } = resolveNativeChatLaunchDraftSend({
         launchDraft: args.launchDraft,
@@ -126,7 +140,7 @@ export function useNativeChatPtyComposerSend(args: {
           : launchSendOptions
       let pendingHandle: NativeChatSendHandle | null = null
       // Why: slash-like text must not silently drop its attached images.
-      if (classification !== 'chat' && imagePaths.length === 0) {
+      if (route === 'command') {
         pendingHandle =
           args.agent === 'codex' && isSlashCommandDraft(text)
             ? sendNativeChatTypedCommand(target.ptyId, text, launchSendOptions)

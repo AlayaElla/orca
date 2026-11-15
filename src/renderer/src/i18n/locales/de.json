@@ -20251,7 +20251,20 @@
         "many_other": "{{count}} Pull Requests erstellt"
       },
       "splitRight": "Rechts teilen",
-      "splitDown": "Unten teilen"
+      "splitDown": "Unten teilen",
+      "reply": {
+        "action": "Antworten",
+        "you": "Du",
+        "showOriginal": "Ursprüngliche Nachricht anzeigen",
+        "originalUnavailable": "Nachricht nicht verfügbar",
+        "cancel": "Antwort abbrechen",
+        "replyingToLabel": "Antwort an {{name}}",
+        "replyingToName": "Antwort an <name>{{name}}</name>",
+        "repliedTo": "Antwort an {{name}}",
+        "repliedToYou": "Antwort auf deine Nachricht",
+        "agentFallback": "Agent",
+        "cancelled": "Antwort abgebrochen"
+      }
     },
     "tab": {
       "bar": {

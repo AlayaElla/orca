@@ -20226,7 +20226,20 @@
         "many_other": "{{count}} pull request oluşturuldu"
       },
       "splitRight": "Sağa Böl",
-      "splitDown": "Aşağı Böl"
+      "splitDown": "Aşağı Böl",
+      "reply": {
+        "action": "Yanıtla",
+        "you": "Siz",
+        "showOriginal": "Asıl mesajı göster",
+        "originalUnavailable": "Mesaj kullanılamıyor",
+        "cancel": "Yanıtı iptal et",
+        "replyingToLabel": "{{name}} adlı mesaja yanıt veriliyor",
+        "replyingToName": "<name>{{name}}</name> adlı mesaja yanıt veriliyor",
+        "repliedTo": "{{name}} adlı mesaja yanıt",
+        "repliedToYou": "Kendi mesajınıza yanıt",
+        "agentFallback": "Ajan",
+        "cancelled": "Yanıt iptal edildi"
+      }
     },
     "tab": {
       "bar": {

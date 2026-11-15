@@ -372,6 +372,7 @@ export function NativeChatMessageList({
               {...readerInput.scrollerProps}
               // Measurement finds this named scroll root independently of utility classes.
               data-native-chat-scroll
+              data-native-chat-subagent-view={subagentId ?? undefined}
               aria-label={scope.regionLabel}
               // Browser anchoring would add unattributed movement beside the virtualizer's anchor.
               className="scrollbar-sleek relative h-full overflow-y-auto [overflow-anchor:none] [scrollbar-gutter:stable_both-edges] focus-visible:outline-none"
