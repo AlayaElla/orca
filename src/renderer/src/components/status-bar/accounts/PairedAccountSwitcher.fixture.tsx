@@ -1,6 +1,6 @@
 import { defineFixture } from '../../../component-fixtures/component-fixture'
 import { getDefaultSettings } from '../../../../../shared/constants'
-import { RUNTIME_PROTOCOL_VERSION } from '../../../../../shared/protocol-version'
+import { RUNTIME_PROTOCOL_VERSION } from '../../../../../shared/remote-runtime/protocol/protocol-version'
 import { createEmptyRateLimitState } from '../../../../../shared/agent-usage/rate-limits/rate-limit-state-factory'
 import type { ProviderRateLimits } from '../../../../../shared/agent-usage/rate-limits/rate-limit-types'
 import { ClaudeSwitcherForOwner } from './ClaudeSwitcherForOwner'

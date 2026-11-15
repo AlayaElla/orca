@@ -295,7 +295,8 @@ export function UsageRosterPanel({
       <div className="border-t border-border/70" />
       {sorted.map((p) => {
         const state = getUsageRosterRowState(p, usedSections(p, t).length > 0, t)
-        const showSignInAction = state.kind === 'sign-in' && canSignIn(p.provider)
+        const showSignInAction =
+          actionsAvailable && state.kind === 'sign-in' && canSignIn(p.provider)
         const rowNode = (
           <UsageRow
             p={p}
@@ -317,7 +318,7 @@ export function UsageRosterPanel({
             </DropdownMenuItem>
           )
         }
-        const custom = renderRow?.(p, rowNode)
+        const custom = actionsAvailable ? renderRow?.(p, rowNode) : null
         if (custom) {
           return <React.Fragment key={p.provider}>{custom}</React.Fragment>
         }

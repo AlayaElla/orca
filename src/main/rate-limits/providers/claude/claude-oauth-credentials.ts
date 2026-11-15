@@ -1,4 +1,4 @@
-import { readAuthTextFile } from '../auth-filesystem-reads'
+import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { z } from 'zod'
@@ -109,12 +109,14 @@ export async function readClaudeOAuthCredentials(
     return keychain
   }
   try {
-    const credentialsPath = path.join(
-      options?.credentialsFileConfigDir ?? path.join(homedir(), '.claude'),
-      '.credentials.json'
-    )
     const file = parseClaudeOAuthCredentialsJson(
-      await readAuthTextFile(credentialsPath),
+      await readFile(
+        path.join(
+          options?.credentialsFileConfigDir ?? path.join(homedir(), '.claude'),
+          '.credentials.json'
+        ),
+        'utf8'
+      ),
       'credentials-file'
     )
     // A file with no token must not hide a refreshable or unreadable Keychain login.

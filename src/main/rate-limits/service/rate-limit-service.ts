@@ -1,5 +1,3 @@
-import { WslUsageReads } from './wsl-usage-reads'
-import type { WslUsageScope } from '../../../shared/wsl-usage-scope'
 import {
   localAccountRuntimeTargetKey,
   type LocalAccountRuntimeTarget
@@ -36,24 +34,6 @@ import type { RateLimitState } from '../../../shared/agent-usage/rate-limits/rat
 import type { NetworkProxySettings } from '../../../shared/network-proxy'
 
 export class RateLimitService extends RateLimitServiceAccountRefresh {
-  private readonly wslReads = new WslUsageReads()
-
-  readWsl(
-    distro: string,
-    scope: WslUsageScope,
-    readId: string,
-    current: () => boolean
-  ): Promise<RateLimitState | null> {
-    const target = { runtime: 'wsl' as const, wslDistro: distro }
-    return this.wslReads.read(distro, scope, readId, {
-      claude: () => this.claudeAuthPreparationResolver?.(target) ?? Promise.resolve(undefined),
-      codex: () => this.resolveCodexHome(target),
-      current,
-      claudeEnabled: this.isClaudeOAuthUsageEnabled(),
-      networkProxySettings: this.networkProxySettingsResolver?.()
-    })
-  }
-
   setCodexHomePathResolver(resolver: CodexHomePathResolver): void {
     this.codexHomePathResolver = resolver
   }

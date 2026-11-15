@@ -1,5 +1,3 @@
-import { wslUsageScope } from '../../shared/wsl-usage-scope'
-import type { GlobalSettings } from '../../shared/global-settings-types'
 import { ipcMain } from 'electron'
 import type { RateLimitService } from '../rate-limits/service/rate-limit-service'
 import type { RateLimitRuntimeTarget } from '../../shared/agent-usage/rate-limits/rate-limit-types'
@@ -7,33 +5,8 @@ import type { CodexAccountService } from '../codex-accounts/service'
 
 export function registerRateLimitHandlers(
   rateLimits: RateLimitService,
-  codexAccounts: CodexAccountService,
-  settings: () => GlobalSettings
+  codexAccounts: CodexAccountService
 ): void {
-  ipcMain.handle(
-    'rateLimits:readWsl',
-    (_event, distro: string, scopeKey: string, readId: string) => {
-      if (
-        typeof distro !== 'string' ||
-        !distro.trim() ||
-        typeof readId !== 'string' ||
-        !readId ||
-        readId.length > 128
-      ) {
-        return null
-      }
-      const scope = wslUsageScope(settings(), distro)
-      if (scope.key !== scopeKey) {
-        return null
-      }
-      return rateLimits.readWsl(
-        distro,
-        scope,
-        readId,
-        () => wslUsageScope(settings(), distro).key === scopeKey
-      )
-    }
-  )
   ipcMain.handle('rateLimits:get', () => rateLimits.getState())
   ipcMain.handle('rateLimits:refresh', () => rateLimits.refresh())
   ipcMain.handle('rateLimits:refreshCodexForTarget', (_event, target: RateLimitRuntimeTarget) =>

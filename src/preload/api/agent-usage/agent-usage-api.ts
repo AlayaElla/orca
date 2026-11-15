@@ -65,7 +65,6 @@ export type OpenCodeUsageApi = UsageProviderApi<OpenCodeUsageSnapshot, OpenCodeU
 export type MuseUsageApi = UsageProviderApi<MuseUsageSnapshot, MuseUsageBreakdownKind>
 
 export type RateLimitsApi = {
-  readWsl: (distro: string, scopeKey: string, readId: string) => Promise<RateLimitState | null>
   get: () => Promise<RateLimitState>
   refresh: () => Promise<RateLimitState>
   refreshCodexForTarget: (target: RateLimitRuntimeTarget) => Promise<RateLimitState>

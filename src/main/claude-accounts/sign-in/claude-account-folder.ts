@@ -1,7 +1,4 @@
-import {
-  readAuthFileStat,
-  readAuthTextFile
-} from '../../rate-limits/providers/auth-filesystem-reads'
+import { fileStatSignature } from '../../filesystem/file-stat-signature'
 import {
   existsSync,
   lstatSync,
@@ -11,6 +8,7 @@ import {
   statSync,
   unlinkSync
 } from 'node:fs'
+import { readFile, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { z } from 'zod'
@@ -55,7 +53,7 @@ export async function claudeStateFileAsync(
   userHome = homedir()
 ): Promise<string> {
   const legacy = claudeStateFile(configDir, userHome, () => true)
-  return (await readAuthFileStat(legacy).catch(() => null))
+  return (await stat(legacy).catch(() => null))
     ? legacy
     : claudeStateFile(configDir, userHome, () => false)
 }
@@ -63,7 +61,7 @@ export async function claudeStateFileAsync(
 // Cache large, frequently rewritten state files across account-list refreshes.
 const logins = new Map<
   string,
-  { mtimeMs: number; size: number; readAt: number; login: ClaudeFolderLogin | null }
+  { signature: string; readAt: number; login: ClaudeFolderLogin | null }
 >()
 
 /** Missing organization IDs permit an email-only match. */
@@ -97,61 +95,62 @@ export function readClaudeFolderLogin(stateFile: string, maxAgeMs = 0): ClaudeFo
   if (recent && Date.now() - recent.readAt < maxAgeMs) {
     return recent.login
   }
-  let stat: { mtimeMs: number; size: number }
+  let signature: string
   try {
-    stat = statSync(stateFile)
+    signature = fileStatSignature(statSync(stateFile, { bigint: true }))
   } catch {
     logins.delete(stateFile)
     return null
   }
-  if (recent?.mtimeMs === stat.mtimeMs && recent.size === stat.size) {
+  if (recent?.signature === signature) {
     recent.readAt = Date.now()
     return recent.login
   }
   const read = readClaudeProfileObject(stateFile)
   const login = read.kind === 'present' ? claudeStateLogin(read.value) : null
-  logins.set(stateFile, { mtimeMs: stat.mtimeMs, size: stat.size, readAt: Date.now(), login })
+  logins.set(stateFile, { signature, readAt: Date.now(), login })
   return login
 }
 
 // Concurrent chat reads of one state-file revision share a single read and parse.
 const pendingLogins = new Map<
   string,
-  { mtimeMs: number; size: number; login: Promise<ClaudeFolderLogin | null> }
+  { signature: string; login: Promise<ClaudeFolderLogin | null> }
 >()
 
 /** Avoid blocking main on state files across WSL shares. */
 export async function readClaudeFolderLoginAsync(
   stateFile: string
 ): Promise<ClaudeFolderLogin | null> {
-  const current = await readAuthFileStat(stateFile).catch(() => null)
+  const current = await stat(stateFile, { bigint: true }).catch(() => null)
   if (!current) {
     logins.delete(stateFile)
     pendingLogins.delete(stateFile)
     return null
   }
+  const signature = fileStatSignature(current)
   const recent = logins.get(stateFile)
-  if (recent?.mtimeMs === current.mtimeMs && recent.size === current.size) {
+  if (recent?.signature === signature) {
     return recent.login
   }
   const pending = pendingLogins.get(stateFile)
-  if (pending?.mtimeMs === current.mtimeMs && pending.size === current.size) {
+  if (pending?.signature === signature) {
     return pending.login
   }
-  const read = { mtimeMs: current.mtimeMs, size: current.size, login: readStateLogin(stateFile) }
+  const read = { signature, login: readStateLogin(stateFile) }
   pendingLogins.set(stateFile, read)
   const login = await read.login
   // A read superseded by a newer revision (or a deleted file) must not repopulate the cache.
   if (pendingLogins.get(stateFile) === read) {
     pendingLogins.delete(stateFile)
-    logins.set(stateFile, { mtimeMs: read.mtimeMs, size: read.size, readAt: Date.now(), login })
+    logins.set(stateFile, { signature: read.signature, readAt: Date.now(), login })
   }
   return login
 }
 
 async function readStateLogin(stateFile: string): Promise<ClaudeFolderLogin | null> {
   try {
-    const state: unknown = JSON.parse(await readAuthTextFile(stateFile))
+    const state: unknown = JSON.parse(await readFile(stateFile, 'utf8'))
     if (state && typeof state === 'object' && !Array.isArray(state)) {
       return claudeStateLogin(Object.fromEntries(Object.entries(state)))
     }

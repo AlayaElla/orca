@@ -1,4 +1,3 @@
-import { useWslOwnerUsage } from './use-wsl-owner-usage'
 import {
   visibleAccountHostId,
   visibleAccountSurfaceKey
@@ -78,9 +77,9 @@ export function useOwnerUsageRateLimits(local: RateLimitState): OwnerUsageRateLi
   const wslDistro = accountOwner?.wslHostDistro ?? null
   const surfaceKey = useAppStore(visibleAccountSurfaceKey)
   const [streamGeneration, setStreamGeneration] = useState(0)
-  const wsl = useWslOwnerUsage(wslDistro, surfaceKey, local, streamGeneration)
-  const unavailable = accountOwner === null
-  const ownerId = accountOwner ? runtimeTargetEnvironmentId(accountOwner.target) : null
+  const unavailable = accountOwner === null || wslDistro !== null
+  const ownerId =
+    accountOwner && !wslDistro ? runtimeTargetEnvironmentId(accountOwner.target) : null
   const ownerActivation = useMemo(
     () => ({ ownerId, wslDistro, surfaceKey }),
     [ownerId, wslDistro, surfaceKey]
@@ -135,16 +134,13 @@ export function useOwnerUsageRateLimits(local: RateLimitState): OwnerUsageRateLi
   }, [ownerActivation])
 
   useEffect(() => {
-    if (!ownerId && !wslDistro) {
+    if (!ownerId) {
       return
     }
     let active = true
     const reopen = (): void => setStreamGeneration((value) => value + 1)
     // Why: older hosts never poll for a paired stream, so a long-lived one would freeze the meters.
     const staleTimer = setTimeout(reopen, REMOTE_USAGE_STALE_REOPEN_MS)
-    if (!ownerId) {
-      return () => clearTimeout(staleTimer)
-    }
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined
     const lost = (): void => {
       if (active) {
@@ -172,7 +168,7 @@ export function useOwnerUsageRateLimits(local: RateLimitState): OwnerUsageRateLi
       clearTimeout(reconnectTimer)
       watcher.close()
     }
-  }, [ownerId, wslDistro, ownerActivation, streamGeneration, applySnapshot, fail])
+  }, [ownerId, ownerActivation, streamGeneration, applySnapshot, fail])
 
   const refreshRemote = useCallback(async () => {
     if (!ownerId) {
@@ -202,12 +198,13 @@ export function useOwnerUsageRateLimits(local: RateLimitState): OwnerUsageRateLi
             environmentId: ownerId,
             label:
               unavailableLabel ||
+              (wslDistro ? `WSL ${wslDistro}` : null) ||
               ownerName?.trim() ||
               t('auto.components.status.bar.StatusBar.remoteServerLabel', 'Remote server')
           }
         : null,
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- translate() reads the UI language implicitly.
-    [ownerId, ownerName, unavailableLabel, unavailable, languageRevision, t]
+    [ownerId, ownerName, unavailableLabel, unavailable, wslDistro, languageRevision, t]
   )
 
   const ownerState = useMemo<OwnerUsageState>(() => {
@@ -243,12 +240,12 @@ export function useOwnerUsageRateLimits(local: RateLimitState): OwnerUsageRateLi
   }, [remoteOwner, owned, unavailable, ownerActivation])
 
   const rateLimits = useMemo(
-    () => (wslDistro ? wsl.rateLimits : resolveOwnerUsageRateLimits(local, ownerState, t)),
-    [local, ownerState, wslDistro, wsl.rateLimits, t]
+    () => resolveOwnerUsageRateLimits(local, ownerState, t),
+    [local, ownerState, t]
   )
   return {
     rateLimits,
     remoteOwner,
-    refreshRemote: wslDistro ? wsl.refresh : ownerId || unavailable ? refreshRemote : null
+    refreshRemote: ownerId || unavailable ? refreshRemote : null
   }
 }
