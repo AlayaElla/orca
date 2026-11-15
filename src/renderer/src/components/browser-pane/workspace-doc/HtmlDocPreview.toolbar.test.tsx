@@ -119,6 +119,7 @@ const storeState = {
   },
   browserUrlHistory: [],
   browserPagesByWorkspace: {},
+  changedFileRefreshByPageId: {},
   workspaceDocHistory: [],
   recordWorkspaceDocVisit: () => undefined,
   browserDefaultSearchEngine: 'google',

@@ -17192,7 +17192,6 @@
           "resolveConflictGuidance": "Resolve the conflict in Git or restore one side before reopening it."
         },
         "EditorPanelHeader": {
-          "fb8331694e": "Open Preview to the Side",
           "4157f3cbf3": "Open Markdown Preview",
           "269ce4842b": "Copy Relative Path",
           "7c08a1f990": "Copy Path",
@@ -20676,7 +20675,9 @@
         "changedFiles_other": "{{count}} changed files",
         "showMoreFiles": "Show {{count}} more",
         "hide": "Hide",
-        "hidden": "Orca won't show turn diffs anymore"
+        "hidden": "Orca won't show turn diffs anymore",
+        "showDiff": "Show diff: {{path}}",
+        "deleted": "Deleted"
       },
       "receipt": {
         "unavailable": "Selected answer unavailable",
@@ -20934,7 +20935,8 @@
         "runBrowser_one": "Used the browser {{count}} time",
         "runPlan_one": "Updated the plan {{count}} time",
         "runLiveBrowser_one": "Using the browser {{count}} time",
-        "runLivePlan_one": "Updating the plan {{count}} time"
+        "runLivePlan_one": "Updating the plan {{count}} time",
+        "openCurrentFile": "{{action}} (current version)"
       },
       "providerFrame": {
         "byteCount_one": "{{count}} byte",
@@ -21258,7 +21260,8 @@
         "notFound": "File not found: {{value0}}",
         "unverifiable": "Couldn't check {{value0}}: {{value1}}",
         "unresolved": "Couldn't resolve {{value0}} in this workspace",
-        "folderUnavailable": "This computer can't open the folder {{value0}}"
+        "folderUnavailable": "This computer can't open the folder {{value0}}",
+        "orcaBrowserFailed": "Couldn't open {{value0}} in the Orca Browser"
       },
       "contextUsage": {
         "label": "Context {{used}} of {{window}} tokens, {{percent}}% used",
@@ -21617,6 +21620,9 @@
         "questionNotSentDetail": "Your question is still in this chat. Send /btw again to retry.",
         "questionUnconfirmed": "{{agent}} couldn't confirm the side chat got your question",
         "questionUnconfirmedDetail": "Check the side chat before asking again. Your question is still in this chat."
+      },
+      "attachment": {
+        "preview": "Preview attachment"
       }
     },
     "tab": {
@@ -25774,6 +25780,12 @@
       "summary": "Orca stopped responding",
       "title": "Report a freeze",
       "uncheckAttachments": "Uncheck \"Attach saved freeze report and diagnostic logs\" and try again, or copy the details."
+    }
+  },
+  "files": {
+    "changedFile": {
+      "openInOrcaBrowserToSide": "Open in Orca Browser to the Side",
+      "openMarkdownPreviewToSide": "Open Markdown Preview to the Side"
     }
   }
 }
