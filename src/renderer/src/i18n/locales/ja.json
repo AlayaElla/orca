@@ -19554,7 +19554,7 @@
         "replyingToName": "<name>{{name}}</name> に返信中",
         "repliedTo": "{{name}} への返信",
         "repliedToYou": "自分のメッセージへの返信",
-        "agentFallback": "エージェント",
+        "agentFallback": "Agent",
         "cancelled": "返信をキャンセルしました"
       }
     },
