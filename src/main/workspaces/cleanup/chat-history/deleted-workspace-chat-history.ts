@@ -22,6 +22,10 @@ import {
   type GoneFolder
 } from './deleted-workspace-folders'
 import { isChatStillIdleInGoneFolder } from './transcript-last-cwd'
+import { isCodexRolloutStillIdleInGoneFolder } from './codex-rollout-last-cwd'
+import { parseWslUncPath } from '../../../../shared/file-access/wsl-paths'
+import { deleteCodexRolloutsPermanently } from '../../../codex/history/cleanup/codex-rollout-permanent-delete'
+import { listHostCodexRolloutHomes } from '../../../codex/history/cleanup/codex-host-rollout-homes'
 
 export type ChatHistorySweepResult = { deleted: number; failed: number; freedBytes: number }
 
@@ -43,16 +47,19 @@ export type ChatHistorySweepDeps = {
 }
 
 /**
- * Agents whose transcripts record the cwd on every message, so a chat resumed in another workspace
- * shows it. Agents that record it once (Pi, OMP, Copilot, Cursor) can't prove that and are kept.
+ * Agents whose transcripts record the cwd on every message (Claude) or turn (Codex), so a chat
+ * resumed in another workspace shows it. Agents that record it once (Pi, OMP, Copilot, Cursor)
+ * can't prove that and are kept.
  */
-const SWEPT_AGENTS: ReadonlySet<AiVaultAgent> = new Set(['claude'])
+const SWEPT_AGENTS: ReadonlySet<AiVaultAgent> = new Set(['claude', 'codex'])
 
 function isSweepableSession(session: AiVaultSession, now: number): boolean {
   const modifiedAt = Date.parse(session.modifiedAt)
   return (
     normalizeExecutionHostId(session.executionHostId) === LOCAL_EXECUTION_HOST_ID &&
     SWEPT_AGENTS.has(session.agent) &&
+    // A WSL distro's history is its own to clean, and reading it can boot the distro.
+    !parseWslUncPath(session.filePath) &&
     // Recently written history may belong to a workspace still in use or being recreated.
     Number.isFinite(modifiedAt) &&
     now - modifiedAt >= WORKSPACE_CLEANUP_RULE_GRACE_MS
@@ -147,7 +154,11 @@ export async function sweepDeletedWorkspaceChatHistory(
         !deps.signal?.aborted &&
         deps.isEnabled() &&
         (await isStillGone(folder)) &&
-        (await isChatStillIdleInGoneFolder(target.filePath, key, Date.now()))
+        (await (
+          target.agent === 'codex'
+            ? isCodexRolloutStillIdleInGoneFolder
+            : isChatStillIdleInGoneFolder
+        )(target.filePath, key, Date.now()))
     )
     result.deleted += deleted.deleted
     result.failed += deleted.failed
@@ -173,7 +184,26 @@ export function deleteChatHistoryOfDeletedWorkspaces(
           { signal: scanSignal }
         )
       ).sessions,
-    deleteSessions: deleteHostAiVaultSessionsPermanently,
+    deleteSessions: async (targets, shouldDelete) => {
+      const isCodex = (target: ChatHistoryTarget): boolean => target.agent === 'codex'
+      const others = targets.filter((target) => !isCodex(target))
+      const codex = targets.filter(isCodex)
+      const empty: ChatHistorySweepResult = { deleted: 0, failed: 0, freedBytes: 0 }
+      const swept =
+        others.length > 0 ? await deleteHostAiVaultSessionsPermanently(others, shouldDelete) : empty
+      // AI Vault lists one name per rollout and refuses Codex deletes: links would bring it back.
+      const rollouts =
+        codex.length > 0
+          ? await deleteCodexRolloutsPermanently(codex, shouldDelete, () =>
+              listHostCodexRolloutHomes(store.getSettings())
+            )
+          : empty
+      return {
+        deleted: swept.deleted + rollouts.deleted,
+        failed: swept.failed + rollouts.failed,
+        freedBytes: swept.freedBytes + rollouts.freedBytes
+      }
+    },
     isEnabled: () => store.getSettings().deleteChatHistoryWithWorkspace === true
   })
 }
