@@ -13,6 +13,7 @@ import type { StructuredAgentSessionAcquireInput } from '../../../native-chat/ag
 import type { StructuredAgentSessionProviderOpenResult } from '../../../native-chat/agent-session-wire/startup/structured-agent-session-provider-open-contract'
 import {
   ACP_REOPEN_FAILED,
+  acpListedSessionFolder,
   acpReopenTakeover,
   acpSessionOtherFolder,
   acpSessionNotRestoredRow
@@ -115,9 +116,13 @@ export async function initializeAcpStructuredSession(
       attaching.translator.finishLoad()
       return { opened, frames }
     }
+    // A failed lookup fails the start; it says nothing about whether the session can reopen.
+    const listedIn = spec.dialect.reopenMovesSession
+      ? await acpListedSessionFolder(resume.sessionId, { initialized, connection, assertStarting })
+      : null
     liveLane = input.lanes.create(resume.sessionId, true)
     try {
-      ;({ opened: started, frames: replayed } = await reopenIn(launch.cwd, liveLane))
+      ;({ opened: started, frames: replayed } = await reopenIn(listedIn ?? launch.cwd, liveLane))
     } catch (refused) {
       let error: unknown = refused
       try {
@@ -250,6 +255,7 @@ export async function initializeAcpStructuredSession(
       withdrawRequests: () => prompts.withdrawAll(),
       lane: liveLane,
       agentName,
+      compactCommand: spec.dialect.compactCommand,
       now,
       settle: onSettled,
       sessionLost: input.onSessionLost,

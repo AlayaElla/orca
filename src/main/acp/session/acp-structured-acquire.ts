@@ -18,8 +18,9 @@ import { AcpStructuredLane } from '../journal/acp-structured-lane'
 import { acpLaneChildWorkDelivery } from '../journal/acp-lane-child-work-delivery'
 import { NO_ACP_CHILD_STOPS } from '../turns/acp-structured-child-stop'
 import { prepareAcpStructuredLaunch } from '../launch/acp-structured-launch-preparation'
+import { acpProcessEnvironment } from '../launch/acp-structured-launch-resolution'
 import { AcpStructuredOptions } from '../options/acp-structured-options'
-import { acpLaunchPermissionModes } from '../launch/acp-launch-permission-modes'
+import { acpAnswersRequests, acpLaunchPermissionModes } from '../launch/acp-launch-permission-modes'
 import { AcpStructuredPrompts } from '../requests/acp-structured-prompts'
 import { withAcpUrlElicitation } from '../requests/acp-url-elicitation'
 import { AcpLoadHistory } from '../history/acp-history-replay'
@@ -97,8 +98,7 @@ export async function acquireAcpStructuredSession(input: {
       command: launch.command,
       args: launch.args,
       cwd: launch.cwd,
-      env: launch.env,
-      envToDelete: launch.envToDelete
+      ...acpProcessEnvironment(launch)
     },
     {
       clientInfo: { name: 'orca', version: '1' },
@@ -113,7 +113,7 @@ export async function acquireAcpStructuredSession(input: {
         }
         // Do not auto-approve questions or permissions enforced by the agent's own mode.
         const claimed = spec.dialect.request?.('session/request_permission', request)
-        if (launch.fullAccess && !spec.permissionModeConfig && !claimed) {
+        if (launch.fullAccess && acpAnswersRequests(spec) && !claimed) {
           const allow = request.options.find((option) => option.kind === 'allow_once')
           if (allow) {
             return { outcome: { outcome: 'selected', optionId: allow.optionId } }

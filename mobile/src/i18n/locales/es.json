@@ -409,6 +409,7 @@
       "otherDevice": "otro dispositivo"
     },
     "sessionOptionCopy": {
+      "none": "Ninguno",
       "availableAfterSessionStarts": "Disponible después de iniciar la sesión.",
       "chooseInAgentPicker": "Elegir en el selector del agente…",
       "effort": "Esfuerzo",

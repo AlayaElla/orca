@@ -20830,6 +20830,7 @@
         "availableAfterSessionStarts": "Available after the session starts.",
         "optionUpdateFailed": "Could not update option",
         "optionValue": {
+          "none": "None",
           "ultracode": "Ultracode",
           "fast": "Fast",
           "minimal": "Minimal",
