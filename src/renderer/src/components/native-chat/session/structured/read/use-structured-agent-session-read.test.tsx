@@ -293,7 +293,8 @@ describe('useStructuredAgentSessionRead history window', () => {
     expect(mocks.call).toHaveBeenCalledTimes(2)
     expect(mocks.subscribe.mock.calls[2]?.[1]).toEqual({
       sessionId: 'session-switch-a',
-      cursor: { epoch: 'epoch-a', sequence: 500 }
+      cursor: { epoch: 'epoch-a', sequence: 500 },
+      capabilities: { promptSuggestions: 1 }
     })
     expect(unsubscribe).toHaveBeenCalledTimes(2)
     const owner = getStructuredAgentSessionReadOwner('session-switch-a', LOCAL_TARGET)

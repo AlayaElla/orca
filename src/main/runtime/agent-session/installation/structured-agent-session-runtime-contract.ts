@@ -43,6 +43,8 @@ export type StructuredAgentSessionRuntimeDeps = StructuredAgentSessionTransportO
     /** Read this host's preference when a chat starts a provider process. */
     isEnabled: () => boolean
   }
+  /** This host's preference for agents' suggested next prompts, read when a chat starts one. */
+  nativeChatPromptSuggestions?: () => boolean
   /** Required, and asserted at install time — saved Arguments must never be silently omitted. */
   resolveLaunchArgs: (provider: AgentSessionRecord['provider']) => Promise<string[]> | string[]
   /** Required, and asserted at install time — an absent policy must not degrade to a guess. */

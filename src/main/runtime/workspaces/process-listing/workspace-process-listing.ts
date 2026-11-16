@@ -59,6 +59,7 @@ import {
 import { isWorkspaceNotificationMuted } from '../../push/notifications/workspace-notification-mute'
 import { WorkerAutoReleaseActivity } from '../../orchestration/terminal-authority/release/worker-auto-release-activity'
 import { nativeChatIdleStopMs } from '../../../../shared/native-chat/native-chat-idle-stop'
+import { nativeChatShowsPromptSuggestions } from '../../../../shared/native-chat/native-chat-appearance-settings'
 import { prWatchWorkspaceSources } from '../../agent-session/pr-watch-workspace-sources'
 import { startPRWatchRuntime } from '../../agent-session/pr-watch-runtime'
 const DEFAULT_WORKTREE_PS_LIMIT = 200
@@ -259,6 +260,7 @@ export abstract class OrcaRuntimeWithGetWorktreePs extends RuntimeChatWorkerEven
       )
     )
     const { stateDirectory, ...catalogDeps } = this.structuredAgentCatalogDependencies()
+    const settings = () => this.requireStore().getSettings()
     await installStructuredAgentSessionHost({
       stateDirectory,
       legacySessionTabIds: this.legacyStructuredSessionTabIds,
@@ -268,13 +270,11 @@ export abstract class OrcaRuntimeWithGetWorktreePs extends RuntimeChatWorkerEven
       ...catalogDeps,
       claudeCliFlags: claudeCliFlagSupport,
       usageLimitAutoContinue: this.usageLimitAutoContinueHostDeps(),
-      idleSweep: { idleMs: () => nativeChatIdleStopMs(this.requireStore().getSettings()) },
-      nativeChatVisuals: {
-        isEnabled: () => this.requireStore().getSettings().nativeChatInlineVisuals !== false
-      },
+      idleSweep: { idleMs: () => nativeChatIdleStopMs(settings()) },
+      nativeChatVisuals: { isEnabled: () => settings().nativeChatInlineVisuals !== false },
+      nativeChatPromptSuggestions: () => nativeChatShowsPromptSuggestions(settings()),
       resolveAgentFullAccess: (agent) =>
-        isTuiAgent(agent) &&
-        preModeChatGetsFullAccess(agent, this.requireStore().getSettings(), process.platform),
+        isTuiAgent(agent) && preModeChatGetsFullAccess(agent, settings(), process.platform),
       launchAccountHome: (record, purpose) =>
         this.resolveStructuredAgentLaunchAccountHome(record, purpose),
       prepareLaunchAccountHome: (record, launchDirectory) =>

@@ -35,6 +35,7 @@ export type {
   ClaudeStructuredSessionEvent
 } from './claude-structured-session-event'
 import type { ClaudeStructuredSessionEvent } from './claude-structured-session-event'
+import type { ClaudePromptSuggestionPause } from './claude-prompt-suggestion-pause'
 
 export type ClaudeStartedSend = { clientMessageId: string; requestedAt?: number }
 
@@ -155,6 +156,7 @@ export type ClaudeSession = {
   cliFlag?: ClaudeCliFlagCheck
   /** Whether the CLI answers live effort and Fast changes; `unknown` ones are rechecked, then tried. */
   flagSettingsControl?: ClaudeCliFlagFact
+  promptSuggestionPause?: ClaudePromptSuggestionPause
   /** CLI-advertised protocol capabilities from init; gates interrupt-receipt handling. */
   capabilities: readonly string[]
   backgroundTasks: ClaudeBackgroundTaskTracker
