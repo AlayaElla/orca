@@ -12,6 +12,8 @@ import { basename, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { AiVaultSession } from '../../../../shared/ai-vault/contracts/ai-vault-types'
 import type { RuntimeStore } from '../../../runtime/construction/runtime-store-contract'
+import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
+import { agentSessionRecordFixture } from '../../../native-chat/testing/agent-session-record-test-fixture'
 import {
   sweepDeletedWorkspaceChatHistory,
   type ChatHistoryTarget
@@ -56,6 +58,21 @@ function session(
     modifiedAt: DAY_AGO,
     ...overrides
   } as AiVaultSession
+}
+
+/** An Orca chat at rest since yesterday in the git worktree at `path`. */
+function nativeChat(
+  sessionId: string,
+  path: string,
+  overrides: Partial<Omit<AgentSessionRecord, 'location'>> = {},
+  location: Partial<AgentSessionRecord['location']> = {}
+): AgentSessionRecord {
+  return agentSessionRecordFixture({
+    sessionId,
+    createdAt: Date.parse(DAY_AGO),
+    ...overrides,
+    location: { workspaceId: `app::${path}`, workspaceKind: 'git-worktree', ...location }
+  })
 }
 
 describe('sweepDeletedWorkspaceChatHistory', () => {
@@ -198,6 +215,23 @@ describe('sweepDeletedWorkspaceChatHistory', () => {
         )
       ]
 
+      const live = nativeChat('live-lease', gone).lease
+      const nativeChats = [
+        nativeChat('native-gone', gone),
+        nativeChat('native-live', join(appWorkspaces, 'live')),
+        nativeChat('native-archived', join(appWorkspaces, 'archived')),
+        nativeChat('native-renamed', join(appWorkspaces, 'old-name')),
+        nativeChat('native-recent', gone, {
+          lastTurn: { state: 'settled', at: Date.parse(TEN_MINUTES_AGO) }
+        }),
+        nativeChat('native-owned', gone, { lease: { ...live, claimStatus: 'reserved' } }),
+        nativeChat('native-folder', gone, {}, { workspaceKind: 'folder' }),
+        nativeChat('native-wsl', gone, {}, { wslDistro: 'Ubuntu' }),
+        nativeChat('native-server', gone, {}, { executionHostId: 'runtime:env-1' }),
+        nativeChat('native-unmounted', join(root, 'unmounted', 'other', 'feature'))
+      ]
+      const forgotten: string[] = []
+
       const result = await sweepDeletedWorkspaceChatHistory({
         store,
         now: NOW,
@@ -215,6 +249,15 @@ describe('sweepDeletedWorkspaceChatHistory', () => {
           }
           deleted.push(...removed)
           return { deleted: removed.length, failed: 0, freedBytes: 21 * removed.length }
+        },
+        listNativeChats: () => nativeChats,
+        forgetNativeChats: async (chats, shouldForget) => {
+          for (const chat of chats) {
+            if (await shouldForget(chat)) {
+              forgotten.push(chat.sessionId)
+            }
+          }
+          return { deleted: forgotten.length, failed: 0, freedBytes: 0 }
         }
       })
 
@@ -223,7 +266,8 @@ describe('sweepDeletedWorkspaceChatHistory', () => {
         'gone-subfolder.jsonl',
         'gone-physical.jsonl'
       ])
-      expect(result).toEqual({ deleted: 3, failed: 0, freedBytes: 63 })
+      expect(forgotten).toEqual(['native-gone'])
+      expect(result).toEqual({ deleted: 4, failed: 0, freedBytes: 63 })
     }
   )
 })
