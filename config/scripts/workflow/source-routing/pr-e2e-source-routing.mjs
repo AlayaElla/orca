@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 import {
@@ -295,7 +297,6 @@ export const PR_E2E_SOURCE_ROUTES = [
     // Why: hand-kept routes missed #30130 and #30120; scoped to managed-host code to bound lane cost.
     id: 'ssh.orcad-remote-sources',
     specs: [
-      'tests/e2e/ssh-orcad-paired-phone-projects.spec.ts',
       'tests/e2e/ssh-orcad-pairing-repair.spec.ts',
       'tests/e2e/ssh-orcad-shared-home-machines.spec.ts',
       'tests/e2e/ssh-orcad-shared-login-migration.spec.ts',
@@ -496,7 +497,24 @@ export function hasWslSourceChange(changedPaths) {
   return changedPaths.some(route.matches)
 }
 
+/** Routes naming a deleted spec make every later PR that touches their sources fail at e2e time. */
+function missingRouteSpecs() {
+  const root = resolve(import.meta.dirname, '../../../..')
+  return PR_E2E_SOURCE_ROUTES.flatMap((route) =>
+    route.specs
+      .filter((spec) => !existsSync(resolve(root, spec)))
+      .map((spec) => `${route.id}: ${spec}`)
+  )
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const missing = missingRouteSpecs()
+  if (missing.length > 0) {
+    console.error(
+      `E2E source routes name specs that no longer exist; remove them from the route with the spec:\n${missing.join('\n')}`
+    )
+    process.exit(1)
+  }
   let input = ''
   process.stdin.setEncoding('utf8')
   for await (const chunk of process.stdin) {
