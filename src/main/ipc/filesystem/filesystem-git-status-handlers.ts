@@ -17,6 +17,7 @@ import {
 import { getDiff } from '../../git/source-control/diffs/file-diff'
 import { registerFilesystemGitHistoryHandlers } from './filesystem-git-history-handlers'
 import { registerFilesystemGitAtRiskLocalFilesHandlers } from './filesystem-git-at-risk-local-files-handlers'
+import { registerFilesystemGitRebaseHandlers } from './filesystem-git-rebase-handlers'
 import { isGitWorktreeMutationInFlight } from '../../git/command-runner/git-worktree-mutation-state'
 import type { GitMutationInFlight } from '../../../shared/git/commands/git-mutation-in-flight'
 import { checkIgnoredPaths } from '../../git/source-control/ignores/check-ignored-paths'
@@ -48,6 +49,7 @@ export function registerFilesystemGitStatusHandlers(context: FilesystemHandlerCo
   const { store, gitStatusCancellations } = context
   registerFilesystemGitHistoryHandlers(context)
   registerFilesystemGitAtRiskLocalFilesHandlers(context)
+  registerFilesystemGitRebaseHandlers(context)
   ipcMain.handle(
     'git:status',
     async (
